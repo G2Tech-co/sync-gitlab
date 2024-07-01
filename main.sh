@@ -1,14 +1,15 @@
 #!/bin/bash
 
 # Configuration for source to add mirror
-GITLAB_URL="https://git.g2holding.org"  # Replace with your GitLab instance URL
-ACCESS_TOKEN=""  # Replace with your personal access token
+SOURCE_GITLAB_URL="https://git.g2holding.org"  # Replace with your GitLab instance URL
+SOURCE_ACCESS_TOKEN=""  # Replace with your personal access token
+SOURCE_GITLAB_GROUP="g2"
 
 
 # Target 
 TARGET_GITLAB_URL="https://gitlab.com"  # Replace with your GitLab instance URL
 TARGET_ACCESS_TOKEN=""  # Replace with your personal access token
-TARGET_GITLAB_GROUP=""
+TARGET_GITLAB_GROUP="g29485726"
 
 
 OUTPUT_FILE="repository_urls.json"  # File to store repository URLs
@@ -24,7 +25,7 @@ get_repositories_from_source() {
 
     while : ; do
         # Fetch the list of repositories
-        response=$(curl --silent --header "PRIVATE-TOKEN: $ACCESS_TOKEN" "$GITLAB_URL/api/v4/projects?per_page=$per_page&page=$page")
+        response=$(curl --silent --header "PRIVATE-TOKEN: $SOURCE_ACCESS_TOKEN" "$SOURCE_GITLAB_URL/api/v4/projects?per_page=$per_page&page=$page")
 
         # Check if the response is empty
         if [[ -z "$response" || "$response" == "[]" ]]; then
@@ -45,12 +46,30 @@ get_repositories_from_source() {
 }
 
 create_mirror() {
+    # loop json file to oprate per project file
     jq -c '.[]' $OUTPUT_FILE | while read i; do
-    # Process each item in the array (stored in $i)
-    # Example: echo "Value: $i"
+        project_is_exist=0
+        id=$(echo $i | jq -r '.id')
+        path_with_namespace=$(echo $i | jq -r '.path_with_namespace')
+
+        # check project exsit in target or not?
+        echo "$TARGET_GITLAB_URL/api/v4/projects?search_namespaces=true&search=${path_with_namespace/$SOURCE_GITLAB_GROUP/$TARGET_GITLAB_GROUP}"
+        break
+        target=$(curl --silent --header "PRIVATE-TOKEN: $TARGET_ACCESS_TOKEN" "$TARGET_GITLAB_URL/api/v4/projects?search_namespaces=true&search=${path_with_namespace/$SOURCE_GITLAB_GROUP/$TARGET_GITLAB_GROUP}")
+        if [[ $(echo "$target" | jq '. | length') -gt 1 ]]; then
+            echo "project exist"
+        else
+            echo "failure"
+        fi
+
+
+        echo $id ;
+        break
 
     done
 }
+
+
 
 create_target_repository() {
     echo $(curl --silent --header "PRIVATE-TOKEN: $TARGET_ACCESS_TOKEN" "$TARGET_GITLAB_URL/api/v4/projects/13777243/remote_mirrors")
