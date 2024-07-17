@@ -52,6 +52,18 @@ create_mirror() {
         id=$(echo $i | jq -r '.id')
         path_with_namespace=$(echo $i | jq -r '.path_with_namespace')
 
+        # check group exist
+        # Split string into an array by forward slash
+        IFS='/' read -ra groups <<< "$path_with_namespace"
+        project_name="${groups[-1]}"
+
+        # remove project name from namespace array
+        groups=("${groups[@]:0:${#groups[@]}-1}")
+
+        echo "${array[2]}"
+
+        break
+
         # check project exsit in target or not?
         echo "$TARGET_GITLAB_URL/api/v4/projects?search_namespaces=true&search=${path_with_namespace/$SOURCE_GITLAB_GROUP/$TARGET_GITLAB_GROUP}"
         break
@@ -61,7 +73,6 @@ create_mirror() {
         else
             echo "failure"
         fi
-
 
         echo $id ;
         break
